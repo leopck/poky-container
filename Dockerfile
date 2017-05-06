@@ -32,8 +32,11 @@ RUN export uid=1000 gid=1000 && \
 
 
 RUN apt-get install -y vim ack-grep bash curl wget
-COPY .bashrc  /home/yoctouser/.bashrc
-COPY .profile /home/yoctouser/.profile
+
+ADD https://raw.githubusercontent.com/leopck/poky-container/master/.bashrc \
+    https://raw.githubusercontent.com/leopck/poky-container/master/.profile \
+    /home/yoctouser/
+
 RUN chown yoctouser:yoctouser -R /home/yoctouser
 RUN ln -sf /bin/bash /bin/sh
 

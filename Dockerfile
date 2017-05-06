@@ -17,27 +17,29 @@ FROM crops/yocto:ubuntu-14.04-base
 
 USER root
 
-ADD https://raw.githubusercontent.com/crops/extsdk-container/master/restrict_useradd.sh  \
-        https://raw.githubusercontent.com/crops/extsdk-container/master/restrict_groupadd.sh \
-        https://raw.githubusercontent.com/crops/extsdk-container/master/usersetup.py \
-        /usr/bin/
-COPY poky-entry.py poky-launch.sh /usr/bin/
-COPY sudoers.usersetup /etc/
-
-# We remove the user because we add a new one of our own.
-# The usersetup user is solely for adding a new user that has the same uid,
-# as the workspace. 70 is an arbitrary *low* unused uid on debian.
-RUN userdel -r yoctouser && \
-    groupadd -g 70 usersetup && \
-    useradd -N -m -u 70 -g 70 usersetup && \
-    chmod 755 /usr/bin/usersetup.py \
-        /usr/bin/poky-entry.py \
-        /usr/bin/poky-launch.sh \
-        /usr/bin/restrict_groupadd.sh \
-        /usr/bin/restrict_useradd.sh && \
-    echo "#include /etc/sudoers.usersetup" >> /etc/sudoers
-
-USER usersetup
 ENV LANG=en_US.UTF-8
 
-ENTRYPOINT ["/usr/bin/dumb-init", "--", "/usr/bin/poky-entry.py"]
+RUN userdel -r yoctouser
+
+# Replace 1000 with your user / group id
+RUN export uid=1000 gid=1000 && \
+    mkdir -p /home/yoctouser && \
+    echo "yoctouser:x:${uid}:${gid}:yoctouser,,,:/home/yoctouser:/bin/bash" >> /etc/passwd && \
+    echo "yoctouser:x:${uid}:" >> /etc/group && \
+    echo "yoctouser ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/yoctouser && \
+    chmod 0440 /etc/sudoers.d/yoctouser && \
+    chown ${uid}:${gid} -R /home/yoctouser
+
+
+RUN apt-get install -y vim ack-grep bash curl wget
+COPY .bashrc  /home/yoctouser/.bashrc
+COPY .profile /home/yoctouser/.profile
+RUN chown yoctouser:yoctouser -R /home/yoctouser
+RUN ln -sf /bin/bash /bin/sh
+
+USER yoctouser
+ENV HOME /home/yoctouser
+WORKDIR $HOME
+
+
+CMD /bin/bash
